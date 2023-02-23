@@ -92,6 +92,7 @@ void myfree(void *ptr, char *file, int line)
 {
     // first determine whether the ptr is a valid ptr or not
     // compare addresses of parameter ptr and the &traverse + sizeof(traverse)
+    struct node* last = head;
     struct node* traverse = head;
 
     // while loop stops if traverse and any nodes match
@@ -99,6 +100,7 @@ void myfree(void *ptr, char *file, int line)
         if (ptr == traverse + sizeof(traverse)) {
             break;
         } else {
+            last = traverse;
             traverse = traverse->next;
         }
     }
@@ -115,7 +117,32 @@ void myfree(void *ptr, char *file, int line)
         return;
     }
     // has passed all guard clauses
+    // so free current chunk
     traverse->inUse = 0;
+
+    // procedure to coalesce free chunks:
+    /*
+        --IF LAST CHUNK IS FREE--
+        1. if last chunk is also free, set a pointer to that chunk
+        2. then traverse through chunks until the next chunk is not free
+        3. then merge everything in between
+
+        --IF NEXT CHUNK IS FREE--
+        1. merge current chunk and next chunk
+    */
+    if (last->inUse == 0) {
+        struct node* temp = traverse;
+        while (temp->inUse == 0) {
+            last->size = last->size + temp->size;
+            last->next = temp->next;
+            temp = temp->next;
+        }
+    }
+
+    if (traverse->next->inUse == 0) {
+        traverse->size = traverse->size + traverse->next->size;
+        traverse->next = traverse->next->next;
+    }
 
     return;
 }
@@ -137,11 +164,14 @@ int main(int argc, char **argv)
     char* b = &a;
     void* firstPtr = mymalloc(100, b, 10);
     void* secondPtr = mymalloc(100, b, 10);
+    void* thirdPtr = mymalloc(100, b, 10);
+    void* fourthPtr = mymalloc(100, b, 10);
+    void* fifthPtr = mymalloc(100, b, 10);
     printMem();
-    myfree(firstPtr, b, 10);
-    void* thirdPtr = mymalloc(10, b, 10);
-    void* fourthPtr = mymalloc(30, b, 10);
-    void* fifthPtr = mymalloc(200, b, 10);
+    myfree(thirdPtr, b, 10);
+    myfree(secondPtr, b, 10);
+    printMem();
+    myfree(fourthPtr, b, 10);
     printMem();
     return 0;
 }
