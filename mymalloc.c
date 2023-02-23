@@ -86,7 +86,7 @@ void printMem()
 {
     struct node* ptr = head;
     while (ptr != NULL) {
-        printf("%zu -> ", ptr->size);
+        printf("%i|%zu -> ", ptr->inUse, ptr->size);
         ptr = ptr->next;
     }
     printf("NULL\n");
