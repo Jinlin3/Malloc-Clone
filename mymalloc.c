@@ -3,76 +3,75 @@
 #include "mymalloc.h"
 
 // Linked list structure for metadata
-struct Node {
-    struct Node* next;
-    int payload;
+struct node {
+    size_t size;
     int inUse; // 0 = free ; 1 = in-use
+    struct node* next;
 };
 
 // This is the global array
 static char memory[MEM_SIZE];
+struct node* head = (void*) memory; // we will edit the values of nodes with head
 
 // mymalloc() function
-void* mymalloc(size_t size, char *file, int line) {
+void* mymalloc(size_t size, char *file, int line) 
+{
+    struct node* ptr; // we will traverse the list with ptr
+    void* returnPtr; // for returning the metadata
 
-    struct Node *start; // start pointer
-    struct Node *ptr; // traversing pointer
-    struct Node *separation; // separation pointer
-
-    int loc = 0; //location value
-    int placed = 0; //boolean to check if memory has been allocated
-
-    void* returnPtr; //pointer used to return
-
-    if (size == 0) { //checks if user input is invalid
-        printf("Cannot allocate 0 bytes.");
-        return 0;
+    if (head->size == 0) {
+        head->size = MEM_SIZE;
+        head->inUse = 0;
+        head->next = NULL;
     }
 
-    start = (struct Node*) memory;
+    ptr = head;
 
-    if (memory[0] == 0) { //if malloc wasn't called yet, a start pointer will be created
-        printf("initializing first malloc...\n");
-        start->payload = MEM_SIZE;
-        start->inUse = 0;
-        memory[0] = 1;
+    // will set ptr to the start of the desired chunk of memory
+    while (ptr->inUse == 1 || ptr->size < size && ptr->next != NULL) {
+        ptr = ptr->next;
+        printf("--traversing--\n");
     }
+    printf("ptr->size: %zu\n", ptr->size);
+    if (ptr->size == size) {
+        //head = ptr;
+        ptr->inUse = 1;
+        returnPtr = (void*)(ptr++);
+        return returnPtr;
+    } else {
+        struct node* temp = (void*)ptr + size + sizeof(struct node);
+        temp->size = size;
+        temp->inUse = 0;
+        temp->next = NULL;
+        ptr->next = temp;
 
-    ptr = start;
+        ptr->size = size + sizeof(struct node);
+        printf("struct size: %zu\n", sizeof(struct node));
+        ptr->inUse = 0;
 
-    while (placed == 0) {
-        if (ptr->inUse == 0) {
-            ptr->payload = size;
-            ptr->inUse = 1;
-
-            separation = (struct Node*) &memory[loc + size]; //sets next node's location
-            separation->payload = MEM_SIZE - loc - size; //sets next node's payload
-            separation->inUse = 0; //sets the status to free
-
-            ptr->next = separation; //links the two pointers
-
-            printf("%lu\n", loc + size);
-            placed = 1;
-        } else {
-            loc = loc + ptr->payload;
-            ptr = ptr->next;
-            printf("traversing...\n");
-        }
+        returnPtr = (void*)(ptr++);
+        return returnPtr;
     }
-
-    return returnPtr;
 }
 
 // myfree() function
-void myfree(void *ptr, char *file, int line) {
+void myfree(void *ptr, char *file, int line)
+{
 
 }
 
-int main(int argc, char **argv) {
-    char* a = "a";
-    printf("first malloc\n");
-    mymalloc(10, a, 10);
-    printf("second malloc\n");
-    mymalloc(50, a, 10);
+int main(int argc, char **argv)
+{
+    char a = 'a';
+    char* b = &a;
+    mymalloc(10, b, 10);
+
+    struct node* ptr = head;
+
+    while (ptr != NULL) {
+        printf("%zu -> ", ptr->size);
+        ptr = ptr->next;
+    }
+    printf("NULL");
     return 0;
 }
