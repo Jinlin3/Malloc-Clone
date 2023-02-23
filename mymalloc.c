@@ -16,8 +16,10 @@ struct node* head = (struct node*) memory; // we will edit the values of nodes w
 // mymalloc() function
 void* mymalloc(size_t size, char *file, int line) 
 {
+    printf("--MALLOC--\n");
     void* returnPtr;
     int currentLoc = 0;
+    int nextLoc;
     size_t chunkSize = size + sizeof(struct node*); // set equal to the amount of bytes desired + amount needed for metadata
     
     // checks if size == 0
@@ -60,14 +62,22 @@ void* mymalloc(size_t size, char *file, int line)
     }
 
     if (ptr->size > chunkSize) {
-        struct node* new = ptr + chunkSize;
+        struct node* new = ptr + chunkSize; // new node for splitting
         new->inUse = 0;
-        new->size = MEM_SIZE - currentLoc - chunkSize;
-        new->next = NULL;
+        if (ptr->next != NULL) {
+            nextLoc = currentLoc + ptr->size;
+            new->next = ptr->next;
+            new->size = MEM_SIZE - currentLoc - chunkSize - (MEM_SIZE - nextLoc);
+            printf("new->size: %zu\n", new->size);
+        } else {
+            new->next = NULL;
+            new->size = MEM_SIZE - currentLoc - chunkSize;
+        }
         ptr->inUse = 1;
         ptr->size = chunkSize;
         ptr->next = new;
-
+        printf("Address of ptr given: %d\n", ptr + sizeof(ptr));
+        
         returnPtr = ptr + sizeof(struct node*);
     } else {
         ptr->inUse = 1;
@@ -77,9 +87,37 @@ void* mymalloc(size_t size, char *file, int line)
 }
 
 // myfree() function
+// will use guard clause-ish techniques
 void myfree(void *ptr, char *file, int line)
 {
+    // first determine whether the ptr is a valid ptr or not
+    // compare addresses of parameter ptr and the &traverse + sizeof(traverse)
+    struct node* traverse = head;
 
+    // while loop stops if traverse and any nodes match
+    while (traverse != NULL) {
+        if (ptr == traverse + sizeof(traverse)) {
+            break;
+        } else {
+            traverse = traverse->next;
+        }
+    }
+    // checks if the loop ran all the way and the current ptr still doesn't match
+    // this means that there are no matching nodes and the ptr given did not come from mymalloc()
+    if (traverse->next == NULL && ptr != traverse + sizeof(traverse)) {
+        printf("Pointer given is not a pointer given by mymalloc()\n");
+        return;
+    }
+    // at this point the pointer given is a pointer given by mymalloc()
+    // now we check if the chunk has already been freed
+    if (traverse->inUse == 0) {
+        printf("Chunk has already been freed\n");
+        return;
+    }
+    // has passed all guard clauses
+    traverse->inUse = 0;
+
+    return;
 }
 
 void printMem()
@@ -97,9 +135,13 @@ int main(int argc, char **argv)
 {
     char a = 'a';
     char* b = &a;
-    mymalloc(100, b, 10);
-    mymalloc(200, b, 10);
-    mymalloc(10, b, 10);
+    void* firstPtr = mymalloc(100, b, 10);
+    void* secondPtr = mymalloc(100, b, 10);
+    printMem();
+    myfree(firstPtr, b, 10);
+    void* thirdPtr = mymalloc(10, b, 10);
+    void* fourthPtr = mymalloc(30, b, 10);
+    void* fifthPtr = mymalloc(200, b, 10);
     printMem();
     return 0;
 }
