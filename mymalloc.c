@@ -11,47 +11,69 @@ struct node {
 
 // This is the global array
 static char memory[MEM_SIZE];
-struct node* head = (void*) memory; // we will edit the values of nodes with head
+struct node* head = (struct node*) memory; // we will edit the values of nodes with head
 
 // mymalloc() function
 void* mymalloc(size_t size, char *file, int line) 
 {
-    struct node* ptr; // we will traverse the list with ptr
-    void* returnPtr; // for returning the metadata
+    void* returnPtr;
+    int currentLoc = 0;
+    size_t chunkSize = size + sizeof(struct node*); // set equal to the amount of bytes desired + amount needed for metadata
+    
+    // checks if size == 0
+    if (size == 0) {
+        printf("Cannot allocate 0 bytes!\n");
+        returnPtr = NULL;
+        return returnPtr;
+    }
 
+    // checks if memory has been initialized
     if (head->size == 0) {
+        printf("--first initialization--\n");
         head->size = MEM_SIZE;
         head->inUse = 0;
         head->next = NULL;
     }
 
-    ptr = head;
+    struct node* ptr = head; // pointer for traversing through LL
 
-    // will set ptr to the start of the desired chunk of memory
-    while (ptr->inUse == 1 || ptr->size < size && ptr->next != NULL) {
-        ptr = ptr->next;
-        printf("--traversing--\n");
+    // sets ptr equal to a valid chunk in the array
+    while (ptr->next != NULL) {
+        if (ptr->inUse == 0 && ptr->size >= chunkSize) {
+            break;
+        } else {
+            currentLoc = currentLoc + ptr->size;
+            ptr = ptr->next;
+        }
     }
-    printf("ptr->size: %zu\n", ptr->size);
-    if (ptr->size == size) {
-        //head = ptr;
+
+    /*
+    3 cases at this stage:
+    1. The current pointer size is greater than the needed size, thus requiring us to divide the last chunk into 2.
+    2. The current pointer size is equal to the needed size, making it simple.
+    3. The current pointer size is less than the needed size, meaning there are no available chunks.
+    */
+    if (ptr->size < chunkSize) {
+        printf("Not enough memory to store %zu bytes.\n", chunkSize);
+        returnPtr = NULL;
+        return returnPtr;
+    }
+
+    if (ptr->size > chunkSize) {
+        struct node* new = ptr + chunkSize;
+        new->inUse = 0;
+        new->size = MEM_SIZE - currentLoc - chunkSize;
+        new->next = NULL;
         ptr->inUse = 1;
-        returnPtr = (void*)(ptr++);
-        return returnPtr;
+        ptr->size = chunkSize;
+        ptr->next = new;
+
+        returnPtr = ptr + sizeof(struct node*);
     } else {
-        struct node* temp = (void*)ptr + size + sizeof(struct node);
-        temp->size = size;
-        temp->inUse = 0;
-        temp->next = NULL;
-        ptr->next = temp;
-
-        ptr->size = size + sizeof(struct node);
-        printf("struct size: %zu\n", sizeof(struct node));
-        ptr->inUse = 0;
-
-        returnPtr = (void*)(ptr++);
-        return returnPtr;
+        ptr->inUse = 1;
+        returnPtr = ptr + sizeof(struct node*);
     }
+    return returnPtr;
 }
 
 // myfree() function
@@ -60,18 +82,24 @@ void myfree(void *ptr, char *file, int line)
 
 }
 
-int main(int argc, char **argv)
+void printMem()
 {
-    char a = 'a';
-    char* b = &a;
-    mymalloc(10, b, 10);
-
     struct node* ptr = head;
-
     while (ptr != NULL) {
         printf("%zu -> ", ptr->size);
         ptr = ptr->next;
     }
-    printf("NULL");
+    printf("NULL\n");
+    return;
+}
+
+int main(int argc, char **argv)
+{
+    char a = 'a';
+    char* b = &a;
+    mymalloc(100, b, 10);
+    mymalloc(200, b, 10);
+    mymalloc(10, b, 10);
+    printMem();
     return 0;
 }
