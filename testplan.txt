@@ -1,0 +1,31 @@
+--TEST PLAN--
+
+Properties required for my library:
+1. mymalloc() reserves only unallocated memory
+2. mymalloc() returns a pointer to an object that does not overlap with other chunks of allocated memory
+3. mymalloc() returns an error when memory requested exceeds the memory available
+4. myfree() deallocates memory only when currently allocated
+5. myfree() coalesces adjacent free blocks
+
+1. Allocate ten 20-byte blocks (for checking property 1 and 2)
+Expected Outcome:
+Ten 24-byte blocks (struct node* size is 4 bytes) and one last block being free with 3856 bytes
+
+2. Allocate a 5000-byte block (for checking property 3)
+Expected Outcome:
+Getting an error message
+
+3. Free each block starting from the last and then immediately trying to free again (for checking property 4)
+Expected Outcome:
+Error messages on the 2nd free attempt
+One 4096-byte chunk
+
+(Tests 4 and 5 are for checking property 5)
+
+4. Allocate four 100-byte blocks
+Expected Outcome:
+Four 100-byte blocks and one last block being free with 3680 bytes
+
+5. Free block 1 and 3, and then free block 2
+Expected Outcome:
+One free block of 312 bytes followed by an allocated block of 104 bytes followed by a free block of 3680 bytes
